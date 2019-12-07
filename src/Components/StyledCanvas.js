@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { CANVAS_ID, CANVAS_HEIGHT, CANVAS_WIDTH } from "./PosePredictor";
-import { Flex, Box, Button, Heading, Text } from "rebass";
+import React from "react";
+import { Flex, Box } from "rebass";
 
 const StyledCanvas = ({
   borderRadius = 3,
@@ -8,8 +7,9 @@ const StyledCanvas = ({
   showOverlay = false,
   overlayContent = null,
   overlayBackground = "bisque",
-  canvasWidth = CANVAS_WIDTH,
-  canvasHeight = CANVAS_HEIGHT
+  canvasID = null,
+  canvasWidth = 200,
+  canvasHeight = 200
 }) => {
   return (
     <Box>
@@ -33,7 +33,7 @@ const StyledCanvas = ({
           backgroundColor: backgroundColor,
           borderRadius: borderRadius
         }}
-        id={CANVAS_ID}
+        id={canvasID}
         height={canvasHeight}
         width={canvasWidth}
       />

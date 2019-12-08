@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-
+import { pickDirection } from "./directionGen.js";
 // Theming
 import { ThemeProvider } from "emotion-theming";
 import theme from "@rebass/preset";
@@ -49,11 +49,13 @@ const CONNECTION_STATE = {
   CONNECTED: "CONNECTED"
 };
 
-const DIRECTIONS = {
+export const DIRECTIONS = {
   LEFT: "Left",
   RIGHT: "Right",
   BACK: "Back",
-  FORWARDS: "Forwards"
+  FORWARDS: "Forwards",
+  DOWN: "Down",
+  UP: "Up"
 };
 
 const MODELS = {
@@ -70,12 +72,14 @@ function App() {
   /* HOOKS */
   const [shouldClassify, setShouldClassify] = useState(false);
   const [currentState, setCurrentState] = useState(STATE.COUNTDOWN);
-  const [usingTimer, setUsingTimer] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [gamePlaying, setGamePlaying] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [countdown, setCountdown] = useState("Welcome to ish!");
   const [direction, setDirection] = useState(DIRECTIONS.LEFT);
   const [predictions, setPredictions] = useState(null);
   const [userVideo, setUserVideo] = useState(null);
   const [hasUserVideo, setHasUserVideo] = useState(false);
+  const [userscore, setUserscore] = useState(0);
 
   const [peer, setPeer] = useState(null);
   const [peerSetup, setPeerSetup] = useState(false);
@@ -341,18 +345,41 @@ function App() {
   };
 
   useInterval(() => {
-    if (usingTimer) {
+    if (gamePlaying) {
       if (countdown > 0) {
         setCountdown(countdown - 1);
       } else {
-        setUsingTimer(false);
+        setCountdown('"GO!"');
+        RunTurn();
       }
     }
   }, 500);
 
   /* INTERNALS */
 
-  const GetPrediction = () => {};
+  const RunTurn = () => {
+    const dir = pickDirection();
+    console.log(dir);
+    setShouldClassify(true); 
+    // Do the callback result here, I'm gonna hard code it for now
+    const hardCoded = DIRECTIONS.LEFT;
+    if (dir === hardCoded) {
+      setCountdown("GAME OVER");
+      setUserscore("Your score: " + userscore.toString()); // not sure why this isn't working
+      setGamePlaying(false);
+      setTimeout(ResetUI, 3000);
+    } else {
+      setUserscore(userscore + 1);
+      setCountdown(5);
+    }
+    setShouldClassify(false); 
+  };
+
+  const ResetUI = () => {
+    setCountdown("Welcome to ish!");
+    setUserscore(0);
+    setButtonDisabled(false);
+  }
 
   const GetOverlayContent = () => {
     if (currentState !== STATE.COUNTDOWN) {
@@ -406,7 +433,15 @@ function App() {
         <Box>
           <Flex justifyContent={"center"} m={[2, 3]}>
             <Heading fontSize={[5, 6, 7]} color={"primary"}>
-              {countdown > 0 ? countdown : '"GO!"'}
+              {countdown}
+            </Heading>
+          </Flex>
+        </Box>
+
+        <Box>
+          <Flex justifyContent={"center"} m={[2, 3]}>
+            <Heading fontSize={[5, 6, 7]} color={"primary"}>
+            <p>User Score: {userscore > 0 ? userscore : 0} </p>
             </Heading>
           </Flex>
         </Box>
@@ -434,29 +469,10 @@ function App() {
             overlayContent={currentState != null ? <GetOverlayContent /> : null}
             borderRadius={5}
             overlayBackground={currentState != null ? GetOverlayColor : null}
-            displayVideo={remoteVideo}
+            displayVideo={userVideo}
           />
         </Flex>
         <WebcamProvider value={userVideo}>
-          <Flex
-            flexDirection="column"
-            justifyContent="center"
-            alignItems="center"
-            sx={{
-              position: "absolute",
-              bottom: 0,
-              left: 0
-            }}
-          >
-            <StyledVideo
-              showOverlay={currentState != null}
-              borderRadius={5}
-              overlayBackground={currentState != null ? GetOverlayColor : null}
-              videoWidth={VIDEO_PREVIEW_DIMENSIONS.width}
-              videoHeight={VIDEO_PREVIEW_DIMENSIONS.height}
-              displayVideo={userVideo}
-            />
-          </Flex>
           {/* <PointPredictor /> */}
           <PosePredictor
             shouldClassify={shouldClassify}
@@ -475,36 +491,14 @@ function App() {
             m={[2, 3]}
             flexWrap={"wrap"}
           >
-            <Text>{lastPeerId}</Text>
-            <Input
-              placeholder="broken-walrus"
-              value={remotePeerID}
-              onChange={handleChange}
-            />
             <Button
               onClick={() => {
-                ConnectToPeer(remotePeerID);
+                setGamePlaying(true);
+                setCountdown(5);
+                setButtonDisabled(true);
               }}
-            >
-              CONNECT TO PEER
-            </Button>
-            <Button onClick={SetupPeer}>SETUP PEER</Button>
-            <Button
-              onClick={() => {
-                setShouldClassify(!shouldClassify);
-              }}
-            >
-              <Text>
-                {shouldClassify ? "STOP CLASSIFYING" : "START CLASSIFYING"}
-              </Text>
-            </Button>
-            <Button onClick={CallPeer}>CALL PEER</Button>
-            <Button
-              onClick={() => {
-                setUsingTimer(!usingTimer);
-              }}
-            >
-              <Text>{usingTimer ? "STOP COUNTDOWN" : "START COUNTDOWN"}</Text>
+            disabled={buttonDisabled}>
+              <Text>{buttonDisabled ? "TURN YOUR HEAD!" : "START GAME"}</Text>
             </Button>
           </Flex>
         </Box>

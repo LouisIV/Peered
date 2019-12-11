@@ -28,13 +28,18 @@ const PosePredictor = ({
       return;
     }
     if (!modelReady) {
-      async function loadModel() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-        model = await tmPose.load(modelURL, metadataURL);
-        setModelReady(true);
-      }
-      loadModel();
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+      tmPose
+        .load(modelURL, metadataURL)
+        .then(loadedModel => {
+          model = loadedModel;
+          console.log(model);
+          setModelReady(true);
+        })
+        .catch(error => {
+          console.log(error);
+        });
     }
   }, []);
 

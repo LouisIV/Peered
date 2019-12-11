@@ -347,6 +347,7 @@ function App() {
   useInterval(() => {
     if (gamePlaying) {
       if (countdown > 0) {
+        setCurrentState(STATE.COUNTDOWN);
         setCountdown(countdown - 1);
       } else {
         setCountdown('"GO!"');
@@ -357,29 +358,36 @@ function App() {
 
   /* INTERNALS */
 
-  const RunTurn = () => {
-    const dir = pickDirection();
-    console.log(dir);
-    setShouldClassify(true); 
-    // Do the callback result here, I'm gonna hard code it for now
-    const hardCoded = DIRECTIONS.LEFT;
-    if (dir === hardCoded) {
-      setCountdown("GAME OVER");
-      setUserscore("Your score: " + userscore.toString()); // not sure why this isn't working
-      setGamePlaying(false);
-      setTimeout(ResetUI, 3000);
-    } else {
-      setUserscore(userscore + 1);
-      setCountdown(5);
+  const returnPrediction = prediction => {
+    if (gamePlaying) {
+      const dir = pickDirection();
+      console.log(dir);
+      if (dir === prediction) {
+        setShouldClassify(false);
+        setCurrentState(STATE.BAD);
+        setCountdown("GAME OVER");
+        setUserscore("Your score: " + userscore.toString()); // not sure why this isn't working
+        setGamePlaying(false);
+        setTimeout(ResetUI, 3000);
+      } else {
+        setShouldClassify(true);
+        setCurrentState(STATE.GOOD);
+        setUserscore(userscore + 1);
+        setCountdown(5);
+      }
     }
-    setShouldClassify(false); 
+  };
+
+  const RunTurn = () => {
+    // Reset the predictions array
+    setPredictions([]);
   };
 
   const ResetUI = () => {
     setCountdown("Welcome to ish!");
     setUserscore(0);
     setButtonDisabled(false);
-  }
+  };
 
   const GetOverlayContent = () => {
     if (currentState !== STATE.COUNTDOWN) {
@@ -391,9 +399,12 @@ function App() {
         return <BadEmoji />;
       }
     }
+
     return (
-      <Heading fontSize={[5, 6, 7]} color={"primary"}>
-        {countdown > 0 ? countdown : `"Lean ${direction}!"`}
+      <Heading fontSize={[4, 5, 6]} color={"primary"} textAlign="center">
+        {"Turn Your"}
+        <br />
+        {"Head!"}
       </Heading>
     );
   };
@@ -441,7 +452,7 @@ function App() {
         <Box>
           <Flex justifyContent={"center"} m={[2, 3]}>
             <Heading fontSize={[5, 6, 7]} color={"primary"}>
-            <p>User Score: {userscore > 0 ? userscore : 0} </p>
+              <p>User Score: {userscore > 0 ? userscore : 0} </p>
             </Heading>
           </Flex>
         </Box>
@@ -465,7 +476,7 @@ function App() {
           alignItems="center"
         >
           <StyledVideo
-            showOverlay={false}
+            showOverlay={currentState != null}
             overlayContent={currentState != null ? <GetOverlayContent /> : null}
             borderRadius={5}
             overlayBackground={currentState != null ? GetOverlayColor : null}
@@ -475,12 +486,36 @@ function App() {
         <WebcamProvider value={userVideo}>
           {/* <PointPredictor /> */}
           <PosePredictor
+            modelURL={MODELS.pose2}
             shouldClassify={shouldClassify}
             canvasWidth={canvasWidth}
             canvasHeight={canvasHeight}
             shouldUpdateWebcam={true}
             predictionCallback={prediction => {
-              setPredictions(prediction);
+              if (gamePlaying) {
+                // Copy current predictions array
+                let newPredictions = predictions;
+
+                // Enforce maximum size
+                if (newPredictions.length > 5) {
+                  // Remove the extra entries
+                  newPredictions.shift();
+                }
+
+                // Append the new entry
+                newPredictions.push(prediction);
+
+                console.log(newPredictions);
+
+                if (newPredictions.length > 3) {
+                  // Callback
+                  console.log(newPredictions);
+                  returnPrediction();
+                }
+
+                // Update Predictions array
+                setPredictions(newPredictions);
+              }
             }}
           />
         </WebcamProvider>
@@ -494,10 +529,12 @@ function App() {
             <Button
               onClick={() => {
                 setGamePlaying(true);
+                setShouldClassify(true);
                 setCountdown(5);
                 setButtonDisabled(true);
               }}
-            disabled={buttonDisabled}>
+              disabled={buttonDisabled}
+            >
               <Text>{buttonDisabled ? "TURN YOUR HEAD!" : "START GAME"}</Text>
             </Button>
           </Flex>

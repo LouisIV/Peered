@@ -86,27 +86,37 @@ function App() {
 
   useEffect(() => {
     if (!userVideo) {
-      let getUserMedia;
-      if (navigator.mediaDevices) {
-        getUserMedia = navigator.mediaDevices.getUserMedia;
-      } else {
-        getUserMedia =
-          navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+      try {
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: false })
+          .then(stream => {
+            console.log("Setting userVideo to", stream);
+            setUserVideo(stream);
+            return stream;
+          });
+      } catch {
+        try {
+          navigator
+            .webkitGetUserMedia({ video: true, audio: false })
+            .then(stream => {
+              console.log("Setting userVideo to", stream);
+              setUserVideo(stream);
+              return stream;
+            });
+        } catch {
+          try {
+            navigator.mozGetUserMedia
+              .webkitGetUserMedia({ video: true, audio: false })
+              .then(stream => {
+                console.log("Setting userVideo to", stream);
+                setUserVideo(stream);
+                return stream;
+              });
+          } catch {
+            alert("Your device doesn't seem to be supported!");
+          }
+        }
       }
-
-      if (!getUserMedia) {
-        console.warn("It looks like your browser is not supported!");
-      }
-
-      getUserMedia({ video: true, audio: false })
-        .then(stream => {
-          console.log("Setting userVideo to", stream);
-          setUserVideo(stream);
-          return stream;
-        })
-        .catch(error => {
-          console.log("Something went wrong", error);
-        });
     }
   }, [userVideo]);
 

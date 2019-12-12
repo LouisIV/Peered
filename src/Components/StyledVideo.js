@@ -12,7 +12,8 @@ const StyledVideo = ({
   videoHeight = 500,
   videoID = "styled-video",
   displayVideo,
-  dependentRef = null
+  dependentRef = null,
+  onLoadedData = null
 }) => {
   const playerRef = useRef();
 
@@ -68,6 +69,12 @@ const StyledVideo = ({
         id={videoID}
         height={videoHeight}
         width={videoWidth}
+        playsInline={true}
+        onLoadedData={() => {
+          if (onLoadedData) {
+            onLoadedData();
+          }
+        }}
       />
     </Box>
   );

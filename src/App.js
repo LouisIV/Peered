@@ -64,11 +64,33 @@ const VIDEO_PREVIEW_DIMENSIONS = {
   height: 200
 };
 
+const constraints = (window.constraints = {
+  audio: false,
+  video: true
+});
+
+function handleRTCError(error) {
+  if (error.name === "TypeError") {
+    alert(`You might not have a secure connection.`);
+  } else if (error.name === "ConstraintNotSatisfiedError") {
+    const v = constraints.video;
+    alert(
+      `The resolution ${v.width.exact}x${v.height.exact} px is not supported by your device.`
+    );
+  } else if (error.name === "PermissionDeniedError") {
+    alert(
+      "Permissions have not been granted to use your camera and " +
+        "microphone, you need to allow the page access to your devices in " +
+        "order for the demo to work."
+    );
+  }
+  alert(`getUserMedia error: ${error.name}`, error);
+}
+
 function App() {
   /* HOOKS */
   const [shouldClassify, setShouldClassify] = useState(false);
   const [currentState, setCurrentState] = useState(STATE.LOADING);
-  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [predictions, setPredictions] = useState(null);
   const [prediction, setPrediction] = useState(null);
@@ -81,34 +103,30 @@ function App() {
   const [lockUserMessage, setLockUserMessage] = useState(false);
 
   const playerRef = useRef(null);
+  const [playerReady, setPlayerReady] = useState(false);
 
   const [ticking, setTicking] = useState(null);
 
-  useEffect(() => {
-    if (!userVideo) {
-      let getUserMedia;
-      if (navigator.mediaDevices) {
-        getUserMedia = navigator.mediaDevices.getUserMedia;
-      } else {
-        getUserMedia =
-          navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-      }
+  const [gameWaiting, setGameWaiting] = useState(false);
 
-      if (!getUserMedia) {
-        console.warn("It looks like your browser is not supported!");
-      }
+  function handleSuccess(stream) {
+    const video = document.querySelector("video");
+    const videoTracks = stream.getVideoTracks();
+    console.log("Got stream with constraints:", constraints);
+    console.log(`Using video device: ${videoTracks[0].label}`);
+    window.stream = stream; // make variable available to browser console
+    video.srcObject = stream;
+    setUserVideo(window.stream);
+  }
 
-      getUserMedia({ video: true, audio: false })
-        .then(stream => {
-          console.log("Setting userVideo to", stream);
-          setUserVideo(stream);
-          return stream;
-        })
-        .catch(error => {
-          console.log("Something went wrong", error);
-        });
+  async function getCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      handleSuccess(stream);
+    } catch (e) {
+      handleRTCError(e);
     }
-  }, [userVideo]);
+  }
 
   useInterval(() => {
     if (currentState === STATE.COUNTDOWN) {
@@ -174,7 +192,24 @@ function App() {
     setPredictions([]);
   };
 
-  useEffect(() => {}, [modelReady]);
+  useEffect(() => {
+    if (gameWaiting) {
+      if (!modelReady) {
+        return;
+      }
+
+      if (!playerReady) {
+        return;
+      }
+
+      setLockUserMessage(false);
+      setCurrentState(STATE.COUNTDOWN);
+      setShouldClassify(true);
+      setTicking(true);
+      setCountdown(5);
+      setGameWaiting(false);
+    }
+  }, [modelReady, playerReady, gameWaiting]);
 
   const GetOverlayContent = () => {
     if (currentState !== STATE.COUNTDOWN) {
@@ -184,17 +219,12 @@ function App() {
             backgroundColor="black"
             color="white"
             onClick={() => {
-              if (!modelReady) {
-                return;
+              if (!userVideo) {
+                getCamera();
               }
-              setLockUserMessage(false);
-              setCurrentState(STATE.COUNTDOWN);
-              setShouldClassify(true);
-              setTicking(true);
-              setCountdown(5);
-              setButtonDisabled(true);
+
+              setGameWaiting(true);
             }}
-            disabled={buttonDisabled}
           >
             <Text>{modelReady ? "START GAME" : "LOADING"}</Text>
           </Button>
@@ -226,7 +256,23 @@ function App() {
             <Text fontSize={[2, 3, 4]} fontWeight={"bold"} color="white" mb={1}>
               {"I KNEW YOU'D LOOK"} {chosenDirection.toUpperCase()}
             </Text>
-
+            <Button
+              backgroundColor="white"
+              color="black"
+              onClick={() => {
+                setLockUserMessage(false);
+                setCurrentState(STATE.COUNTDOWN);
+                setShouldClassify(true);
+                setTicking(true);
+                setCountdown(5);
+                setGameWaiting(true);
+              }}
+              zIndex={10}
+              m={1}
+              mb={2}
+            >
+              <Text zIndex={10}>{"TRY AGAIN"}</Text>
+            </Button>
             <Text fontSize={[1, 2]} color="white" mb={1}>
               {"OR"}
             </Text>
@@ -256,23 +302,6 @@ function App() {
                   </Button>
                 );
               })}
-              <Button
-                backgroundColor="white"
-                color="black"
-                onClick={() => {
-                  setLockUserMessage(false);
-                  setCurrentState(STATE.COUNTDOWN);
-                  setShouldClassify(true);
-                  setTicking(true);
-                  setCountdown(5);
-                  setButtonDisabled(true);
-                }}
-                disabled={buttonDisabled}
-                m={1}
-                mb={2}
-              >
-                <Text zIndex={10}>{"TRY AGAIN"}</Text>
-              </Button>
             </Flex>
           </Flex>
         );
@@ -396,6 +425,9 @@ function App() {
             borderRadius={5}
             overlayBackground={currentState != null ? GetOverlayColor : null}
             displayVideo={userVideo}
+            onLoadedData={() => {
+              setPlayerReady(true);
+            }}
           />
         </Flex>
         <PosePredictor

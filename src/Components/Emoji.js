@@ -12,4 +12,21 @@ const Emoji = props => (
     {props.symbol}
   </span>
 );
+
+export const GoodEmoji = () => {
+  return <Emoji symbol="👍" label="thumbs-up" fontSize={"5em"} />;
+};
+
+export const BadEmoji = () => {
+  return <Emoji symbol="👎" label="thumbs-down" fontSize={"5em"} />;
+};
+
+export const EvalEmoji = () => {
+  return <Emoji symbol="🤔" label="thinking-face" fontSize={"5em"} />;
+};
+
+export const SorryEmoji = () => {
+  return <Emoji symbol="😅" label="grin-with-sweat-face" fontSize={"5em"} />;
+};
+
 export default Emoji;

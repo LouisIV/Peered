@@ -11,17 +11,26 @@ const StyledVideo = ({
   videoWidth = 500,
   videoHeight = 500,
   videoID = "styled-video",
-  displayVideo
+  displayVideo,
+  dependentRef = null
 }) => {
   const playerRef = useRef();
 
   useEffect(() => {
     if (displayVideo) {
       console.log(displayVideo);
-      playerRef.current.srcObject = displayVideo;
-      playerRef.current.play();
+
+      if (dependentRef == null) {
+        playerRef.current.srcObject = displayVideo;
+        playerRef.current.play();
+      } else if (dependentRef != null) {
+        dependentRef.current.srcObject = displayVideo;
+        dependentRef.current.play();
+      } else {
+        console.warn("could not set video!");
+      }
     }
-  }, [playerRef, displayVideo]);
+  }, [playerRef, displayVideo, dependentRef]);
   return (
     <Box width={videoWidth} height={videoHeight} margin={3}>
       {showOverlay ? (
@@ -31,13 +40,14 @@ const StyledVideo = ({
           width={videoWidth}
           height={videoHeight}
           sx={{
+            zIndex: 10,
             position: "absolute",
             backgroundColor: overlayBackground,
             borderRadius: borderRadius,
             display: showOverlay ? "flex" : "none",
             border: "solid",
             borderWidth: 5,
-            borderColor: "primary"
+            borderColor: "black"
           }}
         >
           {overlayContent}
@@ -54,7 +64,7 @@ const StyledVideo = ({
           overflow: "hidden"
         }}
         autoPlay={true}
-        ref={playerRef}
+        ref={dependentRef || playerRef}
         id={videoID}
         height={videoHeight}
         width={videoWidth}
